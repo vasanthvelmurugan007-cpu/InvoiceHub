@@ -1,0 +1,13 @@
+{
+    "name": "invoice-hub-app",
+    "version": "1.0.0",
+    "scripts": {
+        "install-app": "npm install --prefix server && npm install --prefix client",
+        "build-client": "npm run build --prefix client",
+        "build": "npm run install-app && npm run build-client",
+        "start": "npm start --prefix server"
+    },
+    "engines": {
+        "node": "18.x"
+    }
+}
