@@ -1,0 +1,35 @@
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--bg-body);
+}
+
+.main-content {
+  flex: 1;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  /* Give it a subtle paper-like texture or just clean background */
+  background: var(--bg-body);
+  position: relative;
+}
+
+/* Responsive Sidebar Behavior */
+@media (max-width: 768px) {
+  .app-container {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    /* Assuming sidebar class in Sidebar.jsx */
+    width: 100% !important;
+    height: auto !important;
+    position: relative;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .main-content {
+    width: 100%;
+  }
+}
