@@ -8,8 +8,12 @@ const Reports = () => {
 
     useEffect(() => {
         apiFetch('/api/reports/dashboard')
-            .then(res => res.json())
-            .then(data => setStats(data));
+            .then(res => {
+                if (!res.ok) throw new Error('Failed to load reports');
+                return res.json();
+            })
+            .then(data => setStats(data))
+            .catch(err => console.error('Error loading reports:', err));
     }, []);
 
     const exportToExcel = async () => {
@@ -79,16 +83,16 @@ const Reports = () => {
                     <h3>Profit & Loss</h3>
                     <div className="flex justify-between mt-md border-bottom pb-sm">
                         <span>Total Income</span>
-                        <span className="text-green">₹{stats.sales?.toFixed(2)}</span>
+                        <span className="text-green">₹{(stats.sales || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between mt-sm border-bottom pb-sm">
                         <span>Total Expense</span>
-                        <span className="text-red">- ₹{stats.expenses?.toFixed(2)}</span>
+                        <span className="text-red">- ₹{(stats.expenses || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between mt-md font-bold text-lg">
                         <span>Net Profit</span>
-                        <span className={(stats.sales - stats.expenses) >= 0 ? 'text-green' : 'text-red'}>
-                            ₹{(stats.sales - stats.expenses).toFixed(2)}
+                        <span className={((stats.sales || 0) - (stats.expenses || 0)) >= 0 ? 'text-green' : 'text-red'}>
+                            ₹{((stats.sales || 0) - (stats.expenses || 0)).toFixed(2)}
                         </span>
                     </div>
                 </div>

@@ -254,7 +254,23 @@ const Settings = () => {
                         <button
                             className="btn"
                             style={{ background: '#16a34a', color: 'white', width: '100%' }}
-                            onClick={() => window.open('/api/settings/backup', '_blank')}
+                            onClick={async () => {
+                                try {
+                                    const res = await apiFetch('/api/settings/backup');
+                                    if (!res.ok) throw new Error('Backup failed');
+                                    const blob = await res.blob();
+                                    const url = window.URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = `billing-backup-${new Date().toISOString().split('T')[0]}.sqlite`;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    a.remove();
+                                    window.URL.revokeObjectURL(url);
+                                } catch (err) {
+                                    alert('Failed to download backup: ' + err.message);
+                                }
+                            }}
                         >
                             <Upload size={16} style={{ marginRight: '8px', transform: 'rotate(180deg)' }} /> Download Database Backup
                         </button>

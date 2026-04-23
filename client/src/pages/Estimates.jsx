@@ -13,8 +13,8 @@ const Estimates = () => {
                     <td className="font-medium">{est.estimate_number}</td>
                     <td>{new Date(est.date).toLocaleDateString()}</td>
                     <td>{est.customer_name}</td>
-                    <td>₹{est.total?.toFixed(2)}</td>
-                    <td><span className="badge">{est.status}</span></td>
+                    <td>₹{(est.total || 0).toFixed(2)}</td>
+                    <td><span className="badge">{est.status || 'Draft'}</span></td>
                 </>
             )}
         />

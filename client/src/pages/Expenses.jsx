@@ -13,7 +13,14 @@ const Expenses = () => {
         const token = localStorage.getItem('token');
         fetch('/api/expenses', {
             headers: { 'Authorization': `Bearer ${token}` }
-        }).then(res => res.json()).then(d => setExpenses(d.data || []));
+        }).then(res => {
+            if (!res.ok) {
+                if (res.status === 403) return { data: [] }; // Premium feature locked
+                throw new Error('Failed to fetch expenses');
+            }
+            return res.json();
+        }).then(d => setExpenses(d.data || []))
+        .catch(err => console.error("Error fetching expenses:", err));
     }, []);
 
     const handleSubmit = async (e) => {

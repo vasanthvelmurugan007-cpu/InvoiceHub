@@ -13,8 +13,8 @@ const PurchaseOrders = () => {
                     <td className="font-medium">{po.po_number}</td>
                     <td>{new Date(po.date).toLocaleDateString()}</td>
                     <td>{po.vendor_name}</td>
-                    <td>₹{po.total?.toFixed(2)}</td>
-                    <td><span className="badge">{po.status}</span></td>
+                    <td>₹{(po.total || 0).toFixed(2)}</td>
+                    <td><span className="badge">{po.status || 'Open'}</span></td>
                 </>
             )}
         />

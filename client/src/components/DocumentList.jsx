@@ -8,8 +8,15 @@ const DocumentList = ({ title, endpoint, createPath, columns, mapRow }) => {
 
     useEffect(() => {
         apiFetch(`/api/${endpoint}`)
-            .then(res => res.json())
-            .then(d => setItems(d.data || []));
+            .then(res => {
+                if (!res.ok) {
+                    if (res.status === 403) return { data: [] }; // Premium feature locked
+                    throw new Error('Failed to fetch');
+                }
+                return res.json();
+            })
+            .then(d => setItems(d.data || []))
+            .catch(err => console.error(`Error fetching ${endpoint}:`, err));
     }, [endpoint]);
 
     return (

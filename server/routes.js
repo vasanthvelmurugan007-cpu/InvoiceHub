@@ -6,14 +6,19 @@ const { v4: uuidv4 } = require('uuid'); // Assuming uuid might be used later or 
 
 // Middleware to check for Premium subscription
 const checkPremium = (req, res, next) => {
-    // If not logged in, or Free tier, block
-    if (!req.user || req.user.subscription_tier !== 'Premium') {
-        return res.status(403).json({
-            error: "Premium Feature Required",
-            message: "This feature is only available for Premium users. Upgrade for ₹499/year."
-        });
+    // Check the LIVE database value instead of the stale JWT token
+    if (!req.user) {
+        return res.status(401).json({ error: "Authentication required" });
     }
-    next();
+    db.get("SELECT subscription_tier FROM users WHERE id = ?", [req.user.id], (err, row) => {
+        if (err || !row || row.subscription_tier !== 'Premium') {
+            return res.status(403).json({
+                error: "Premium Feature Required",
+                message: "This feature is only available for Premium users. Upgrade for ₹499/year."
+            });
+        }
+        next();
+    });
 };
 
 // Middleware to check for Admin role
@@ -122,7 +127,7 @@ router.post('/invoices', (req, res) => {
                 ) VALUES (?,?,?,?,?,?,?,?,?)`);
 
                 // Prepare stock update statement
-                const updateStock = db.prepare(`UPDATE products SET quantity = quantity - ? WHERE id = ?`);
+                const updateStock = db.prepare(`UPDATE products SET quantity = quantity - ? WHERE id = ? AND user_id = ?`);
 
                 items.forEach(item => {
                     // Record Item
@@ -131,7 +136,7 @@ router.post('/invoices', (req, res) => {
 
                     // Deduct Stock (if product_id exists)
                     if (item.product_id) {
-                        updateStock.run(item.quantity, item.product_id);
+                        updateStock.run(item.quantity, item.product_id, req.user.id);
                     }
                 });
 
@@ -320,25 +325,26 @@ router.post('/delivery-challans', checkPremium, (req, res) => {
 // --- Reports ---
 router.get('/reports/dashboard', (req, res) => {
     const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+    const userId = req.user.id;
     const queries = {
-        sales_total: `SELECT SUM(total) as val FROM invoices WHERE user_id = ${req.user.id}`,
-        monthly_sales: `SELECT SUM(total) as val FROM invoices WHERE date LIKE '${currentMonth}%' AND user_id = ${req.user.id}`,
-        expenses_total: `SELECT SUM(amount) as val FROM expenses WHERE user_id = ${req.user.id}`,
-        unpaid_invoices: `SELECT COUNT(*) as val FROM invoices WHERE status = 'Unpaid' AND user_id = ${req.user.id}`,
-        invoice_count: `SELECT COUNT(*) as val FROM invoices WHERE user_id = ${req.user.id}`,
-        stock_value: `SELECT SUM(price * 10) as val FROM products WHERE user_id = ${req.user.id}`
+        sales_total: { sql: `SELECT SUM(total) as val FROM invoices WHERE user_id = ?`, params: [userId] },
+        monthly_sales: { sql: `SELECT SUM(total) as val FROM invoices WHERE date LIKE ? AND user_id = ?`, params: [`${currentMonth}%`, userId] },
+        expenses_total: { sql: `SELECT SUM(amount) as val FROM expenses WHERE user_id = ?`, params: [userId] },
+        unpaid_invoices: { sql: `SELECT COUNT(*) as val FROM invoices WHERE status = 'Unpaid' AND user_id = ?`, params: [userId] },
+        invoice_count: { sql: `SELECT COUNT(*) as val FROM invoices WHERE user_id = ?`, params: [userId] },
+        stock_value: { sql: `SELECT SUM(price * quantity) as val FROM products WHERE user_id = ?`, params: [userId] }
     };
 
     db.serialize(() => {
         const results = {};
-        db.get(queries.sales_total, (err, row) => results.sales = row?.val || 0);
-        db.get(queries.monthly_sales, (err, row) => results.monthly_sales = row?.val || 0);
-        db.get(queries.expenses_total, (err, row) => results.expenses = row?.val || 0);
-        db.get(queries.invoice_count, (err, row) => results.invoice_count = row?.val || 0);
+        db.get(queries.sales_total.sql, queries.sales_total.params, (err, row) => results.sales = row?.val || 0);
+        db.get(queries.monthly_sales.sql, queries.monthly_sales.params, (err, row) => results.monthly_sales = row?.val || 0);
+        db.get(queries.expenses_total.sql, queries.expenses_total.params, (err, row) => results.expenses = row?.val || 0);
+        db.get(queries.invoice_count.sql, queries.invoice_count.params, (err, row) => results.invoice_count = row?.val || 0);
 
         // Fetch last 15 days of sales for chart
         const salesTrendQuery = "SELECT date, SUM(total) as amount FROM invoices WHERE user_id = ? GROUP BY date ORDER BY date DESC LIMIT 15";
-        db.all(salesTrendQuery, [req.user.id], (err, rows) => {
+        db.all(salesTrendQuery, [userId], (err, rows) => {
             results.salesTrend = (rows || []).reverse();
 
             // Fetch 5 most recent invoices
@@ -349,13 +355,13 @@ router.get('/reports/dashboard', (req, res) => {
                 WHERE invoices.user_id = ?
                 ORDER BY invoices.id DESC LIMIT 5
             `;
-            db.all(recentSql, [req.user.id], (recentRows) => {
+            db.all(recentSql, [userId], (err, recentRows) => {
                 results.recentInvoices = recentRows || [];
-                db.get(queries.unpaid_invoices, (err, row) => {
+                db.get(queries.unpaid_invoices.sql, queries.unpaid_invoices.params, (err, row) => {
                     results.unpaid = row?.val || 0;
 
                     // Low Stock Alert
-                    db.all("SELECT name, quantity FROM products WHERE quantity < 20 AND user_id = ?", [req.user.id], (err, stockRows) => {
+                    db.all("SELECT name, quantity FROM products WHERE quantity < 20 AND user_id = ?", [userId], (err, stockRows) => {
                         results.low_stock = stockRows || [];
                         res.json(results);
                     });
@@ -547,10 +553,18 @@ router.post('/subscription/request', (req, res) => {
 });
 
 router.get('/subscription/requests', (req, res) => {
-    db.all("SELECT * FROM subscription_requests ORDER BY id DESC", [], (err, rows) => {
-        if (err) return res.status(400).json({ error: err.message });
-        res.json({ data: rows });
-    });
+    // Admin sees all requests, regular users see only their own
+    if (req.user.role === 'Admin') {
+        db.all("SELECT subscription_requests.*, users.username FROM subscription_requests LEFT JOIN users ON subscription_requests.user_id = users.id ORDER BY subscription_requests.id DESC", [], (err, rows) => {
+            if (err) return res.status(400).json({ error: err.message });
+            res.json({ data: rows });
+        });
+    } else {
+        db.all("SELECT * FROM subscription_requests WHERE user_id = ? ORDER BY id DESC", [req.user.id], (err, rows) => {
+            if (err) return res.status(400).json({ error: err.message });
+            res.json({ data: rows });
+        });
+    }
 });
 
 router.post('/subscription/requests/:id/approve', (req, res) => {
@@ -559,12 +573,33 @@ router.post('/subscription/requests/:id/approve', (req, res) => {
     expiryDate.setFullYear(expiryDate.getFullYear() + 100); // 100 Years (Lifetime)
     const expiryISO = expiryDate.toISOString().split('T')[0];
 
-    db.serialize(() => {
-        db.run("UPDATE subscription_requests SET status = 'Approved' WHERE id = ?", [requestId]);
-        db.run("UPDATE settings SET subscription_tier = 'Premium', subscription_expiry = ?", [expiryISO], (err) => {
-            if (err) return res.status(400).json({ error: err.message });
-            res.json({ success: true });
+    // First, get the user_id from the subscription request
+    db.get("SELECT user_id FROM subscription_requests WHERE id = ?", [requestId], (err, row) => {
+        if (err) return res.status(400).json({ error: err.message });
+        if (!row) return res.status(404).json({ error: "Subscription request not found" });
+
+        const targetUserId = row.user_id;
+
+        db.serialize(() => {
+            db.run("UPDATE subscription_requests SET status = 'Approved' WHERE id = ?", [requestId]);
+            // Update the specific user's tier
+            db.run("UPDATE users SET subscription_tier = 'Premium', subscription_expiry = ? WHERE id = ?", [expiryISO, targetUserId]);
+            // Update the specific user's settings
+            db.run("UPDATE settings SET subscription_tier = 'Premium', subscription_expiry = ? WHERE user_id = ?", [expiryISO, targetUserId], (err) => {
+                if (err) return res.status(400).json({ error: err.message });
+                res.json({ success: true });
+            });
         });
+    });
+});
+
+// --- Reject Subscription Request ---
+router.post('/subscription/requests/:id/reject', (req, res) => {
+    const requestId = req.params.id;
+    db.run("UPDATE subscription_requests SET status = 'Rejected' WHERE id = ?", [requestId], function (err) {
+        if (err) return res.status(400).json({ error: err.message });
+        if (this.changes === 0) return res.status(404).json({ error: "Request not found" });
+        res.json({ success: true });
     });
 });
 
@@ -595,12 +630,17 @@ router.post('/users/:id/tier', isAdmin, (req, res) => {
     if (expiryDate) expiryDate.setFullYear(expiryDate.getFullYear() + 100);
     const expiryISO = expiryDate ? expiryDate.toISOString().split('T')[0] : null;
 
-    db.run("UPDATE users SET subscription_tier = ?, subscription_expiry = ? WHERE id = ?",
-        [subscription_tier, expiryISO, req.params.id],
-        (err) => {
-            if (err) return res.status(400).json({ error: err.message });
-            res.json({ success: true, tier: subscription_tier, expiry: expiryISO });
-        });
+    db.serialize(() => {
+        db.run("UPDATE users SET subscription_tier = ?, subscription_expiry = ? WHERE id = ?",
+            [subscription_tier, expiryISO, req.params.id]);
+        // Also sync to settings table
+        db.run("UPDATE settings SET subscription_tier = ?, subscription_expiry = ? WHERE user_id = ?",
+            [subscription_tier, expiryISO, req.params.id],
+            (err) => {
+                if (err) return res.status(400).json({ error: err.message });
+                res.json({ success: true, tier: subscription_tier, expiry: expiryISO });
+            });
+    });
 });
 
 router.delete('/users/:id', isAdmin, (req, res) => {

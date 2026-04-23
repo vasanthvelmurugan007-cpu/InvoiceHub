@@ -1,0 +1,31 @@
+InvoiceHub Billing Software - Features & Highlights
+
+Core Billing & Inventory
+* You can create professional invoices quickly with automatic tax and total calculations.
+* The system keeps track of your products and alerts you when stock is running low.
+* You can manage all your customer details, including their GSTIN and contact information, in one place.
+* The dashboard gives you a real-time snapshot of your sales, expenses, unpaid invoices, and overall profit.
+* You can easily share invoices directly with customers via WhatsApp or Email with a single click.
+
+Premium Features
+* You can create Estimates (Proforma Invoices) to send quotes to your clients before billing them.
+* You can generate Purchase Orders to manage the stock you buy from your vendors.
+* You can issue Delivery Challans when transporting goods to customers.
+* The software allows you to track all your business expenses to understand your cash flow better.
+* You can manage your vendor database just like your customers.
+
+Compliance & Reporting (Premium)
+* The system automatically generates GSTR-1 ready reports for your sales.
+* You can view a complete tax summary (GSTR-3B logic) showing your input and output tax.
+* You get detailed Profit & Loss reports to track your business performance over time.
+
+Customization & Branding
+* You can personalize your bills by uploading your company logo and digital signature.
+* You can add your bank account details, UPI ID, and custom terms & conditions to every invoice.
+* The system automatically converts your total bill amounts into words (e.g., "Five Thousand Only").
+
+Security & Reliability
+* Every user gets their own private, secure workspace where their data is kept completely separate from others.
+* You can enable Two-Factor Authentication (2FA) to add an extra layer of security to your account.
+* You can download complete backups of your database at any time to keep your data safe.
+* The system supports an Admin dashboard to manage user accounts and approve premium subscriptions.

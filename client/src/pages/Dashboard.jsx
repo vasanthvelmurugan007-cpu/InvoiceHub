@@ -173,7 +173,7 @@ const Dashboard = () => {
                                             <div style={{ fontWeight: '600', fontSize: '14px' }}>{inv.customer_name}</div>
                                             <div style={{ fontSize: '12px', color: '#94a3b8' }}>{inv.invoice_number} • {new Date(inv.date).toLocaleDateString()}</div>
                                         </div>
-                                        <div style={{ fontWeight: '700', color: '#0f172a' }}>₹ {inv.total.toFixed(2)}</div>
+                                        <div style={{ fontWeight: '700', color: '#0f172a' }}>₹ {(inv.total || 0).toFixed(2)}</div>
                                     </div>
                                 ))}
                             </div>

@@ -1,0 +1,10 @@
+Hey! I just finished building a complete, full-stack SaaS Billing and Inventory Management software. 
+
+It's packed with features like:
+- GST-ready invoicing, estimates, and purchase orders.
+- Real-time stock tracking with low-stock alerts.
+- A smart dashboard showing sales, expenses, and net profit.
+- One-click sharing of invoices via WhatsApp and Email.
+- Secure, private workspaces for users with Two-Factor Authentication (2FA).
+
+The app is fully functional, audited, and optimized. Should I go ahead and deploy it live to a server now? Let me know what you think!

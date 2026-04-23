@@ -13,7 +13,14 @@ const Vendors = () => {
         const token = localStorage.getItem('token');
         fetch('/api/vendors', {
             headers: { 'Authorization': `Bearer ${token}` }
-        }).then(res => res.json()).then(d => setVendors(d.data || []));
+        }).then(res => {
+            if (!res.ok) {
+                if (res.status === 403) return { data: [] }; // Premium feature locked
+                throw new Error('Failed to fetch vendors');
+            }
+            return res.json();
+        }).then(d => setVendors(d.data || []))
+        .catch(err => console.error("Error fetching vendors:", err));
     }, []);
 
     const handleSubmit = async (e) => {
