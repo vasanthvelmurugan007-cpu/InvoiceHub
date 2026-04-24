@@ -67,10 +67,10 @@ const Customers = () => {
     };
 
     return (
-        <div className="page-container">
-            <div className="flex justify-between items-center mb-lg">
+        <div className="page-container w-full">
+            <div className="flex justify-between items-center mb-lg w-full gap-md">
                 <h1>Customers</h1>
-                <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+                <button className="btn btn-primary shrink-0" onClick={() => setIsModalOpen(true)}>
                     <Plus size={18} style={{ marginRight: '8px' }} />
                     Add Customer
                 </button>
